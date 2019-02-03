@@ -1,0 +1,85 @@
+---
+title: "Machine Learning Project"
+author: "John R Ferguson"
+date: "January 14, 2019"
+output: html_document
+---
+
+## Machine Learning Project:  Prediction Assignment 
+
+Background
+
+In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+## Project Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(randomForest)
+library(caret)
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+## Data analysis/ preprocessing
+
+```{r data analysis}
+# Remove variables with a lot of NAs
+maxNACount <- nrow(training) / 2000
+removeColumns <- which(colSums(is.na(training) | training=="") > maxNACount)
+trainclean <- training[,-removeColumns]
+testclean <- testing[,-removeColumns]
+# Remove variables with timestamps
+removeColumns <- grep("timestamp", names(trainclean))
+trainclean2 <- trainclean[,-c(1, removeColumns )]
+testclean2 <- testclean[,-c(1, removeColumns )]
+# Remove header/index variables
+remove=c('user_name','new_window','num_window')
+trainclean3 <- trainclean2[, -which(names(trainclean2) %in% remove)]
+testclean3 <- testclean2[, -which(names(testclean2) %in% remove)]
+```
+
+## Data modeling
+
+```{r data modeling}
+# split data into a train set and a test set
+inTrain = createDataPartition(trainclean3$classe, p = 0.75, list=FALSE)
+MyTrain = trainclean3[inTrain,]
+MyTest = trainclean3[-inTrain,]
+
+set.seed(26587)
+# run random forest model
+modelRF <- randomForest(classe ~ ., data = MyTrain[-1], importance=TRUE,ntrees=10)
+modelRF
+```
+
+## testing & validation
+
+```{r test & validation}
+ptraining <- predict(modelRF,MyTrain)
+print(confusionMatrix(ptraining,MyTrain$classe))
+
+pval <- predict(modelRF,MyTest)
+print(confusionMatrix(pval,MyTest$classe))
+
+```
+
+## prediction
+
+```{r prediction}
+ptest <- predict(modelRF,testclean3)
+ptest
+```
